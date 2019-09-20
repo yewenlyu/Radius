@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/olivere/elastic"
 	"github.com/pborman/uuid"
+
+	"cloud.google.com/go/storage"
 )
 
 type Location struct {
@@ -26,10 +29,11 @@ type Post struct {
 }
 
 const (
-	POST_INDEX = "post"
-	POST_TYPE  = "post"
-	DISTANCE   = "200km"
-	ES_URL     = "http://35.193.104.85:9200"
+	POST_INDEX  = "post"
+	POST_TYPE   = "post"
+	DISTANCE    = "200km"
+	ES_URL      = "http://35.193.104.85:9200"
+	BUCKET_NAME = "yewenlyu-project-radius"
 )
 
 func main() {
