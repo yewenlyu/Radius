@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cloud.google.com/go/bigtable"
 	"context"
 	"encoding/json"
 	"fmt"
