@@ -122,6 +122,13 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Printf("Saved one post to ElasticSearch: %s", p.Message)
+
+	err = saveToBigTable(p, id)
+	if err != nil {
+		http.Error(w, "Failed to save post to BigTable", http.StatusInternalServerError)
+		fmt.Printf("Failed to save post to BigTable %v.\n", err)
+		return
+	}
 }
 
 func handlerSearch(w http.ResponseWriter, r *http.Request) {
@@ -258,4 +265,28 @@ func saveToGCS(r io.Reader, bucketName, objectName string) (*storage.ObjectAttrs
 
 	fmt.Printf("Image is saved to GCS: %s\n", attrs.MediaLink)
 	return attrs, nil
+}
+
+// Save a post to BigTable
+func saveToBigTable(p *Post, id string) {
+	ctx := context.Background()
+	bt_client, err := bigtable.NewClient(ctx, radius-252718, radius-post)
+	if err != nil {
+		return err
+	}
+
+	tbl := bt_client.Open("post")
+	mut := bigtable.NewMutation()
+	t := bigtable.Now()
+	mut.Set("post", "user", t, []byte(p.User))
+	mut.Set("post", "message", t, []byte(p.Message))
+	mut.Set("location", "lat", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
+	mut.Set("location", "lon", t, []byte(strconv.FormatFloat(p.Location.Lon, 'f', -1, 64)))
+
+	err = tbl.Apply(ctx, id, mut)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Post is saved to BigTable: %s\n", p.Message)
+	return nil
 }
