@@ -94,3 +94,79 @@ func addUser(user User) error {
 	fmt.Printf("User is added: %s\n", user.Username)
 	return nil
 }
+
+func handlerLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Received one login request")
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var user User
+	if err := decoder.Decode(&user); err != nil {
+		http.Error(w, "Cannot decode user data from client", http.StatusBadRequest)
+		fmt.Printf("Cannot decode user data from client %v.\n", err)
+		return
+	}
+
+	if err := checkUser(user.Username, user.Password); err != nil {
+		if err.Error() == "Wrong username or password" {
+			http.Error(w, "Wrong username or password", http.StatusUnauthorized)
+		} else {
+			http.Error(w, "Failed to read from ElasticSearch", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": user.Username,
+		"exp":      time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	tokenString, err := token.SignedString(mySigningKey)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		fmt.Printf("Failed to generate token %v.\n", err)
+		return
+	}
+
+	w.Write([]byte(tokenString))
+}
+
+func handlerSignup(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Received one signup request")
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var user User
+	if err := decoder.Decode(&user); err != nil {
+		http.Error(w, "Cannot decode user data from client", http.StatusBadRequest)
+		fmt.Printf("Cannot decode user data from client %v.\n", err)
+		return
+	}
+
+	if user.Username == "" || user.Password == "" || !regexp.MustCompile(`^[a-z0-9_]+$`).MatchString(user.Username) {
+		http.Error(w, "Invalid username or password", http.StatusBadRequest)
+		fmt.Printf("Invalid username or password.\n")
+		return
+	}
+
+	if err := addUser(user); err != nil {
+		if err.Error() == "User already exists" {
+			http.Error(w, "User already exists", http.StatusBadRequest)
+		} else {
+			http.Error(w, "Failed to save to ElasticSearch", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Write([]byte("User added successfully."))
+}
