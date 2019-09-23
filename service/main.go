@@ -48,10 +48,19 @@ func main() {
 	fmt.Println("started-service")
 	createIndexIfNotExist()
 
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			return []byte(mySigningKey), nil
+		},
+		SigningMethod: jwt.SigningMethodHS256,
+	})
+
 	r := mux.NewRouter()
 
-	r.Handle("/post", http.HandlerFunc(handlerPost)).Methods("POST", "OPTIONS")
-	r.Handle("/search", http.HandlerFunc(handlerSearch)).Methods("GET", "OPTIONS")
+	r.Handle("/post", jwtMiddleware.Handler(http.HandlerFunc(handlerPost))).Methods("POST", "OPTIONS")
+	r.Handle("/search", jwtMiddleware.Handler(http.HandlerFunc(handlerSearch))).Methods("GET", "OPTIONS")
+	r.Handle("/signup", http.HandlerFunc(handlerSignup)).Methods("POST", "OPTIONS")
+	r.Handle("/login", http.HandlerFunc(handlerLogin)).Methods("POST", "OPTIONS")
 
 	http.Handle("/", r)
 
