@@ -272,17 +272,13 @@ func saveToES(post *Post, id string) error {
 }
 
 // This function implements the GeoDistanceQuery logic
-func readFromES(lat, lon float64, ran string) ([]Post, error) {
+func readFromES(query elastic.Query) ([]Post, error) {
 
 	// create a connection to ES, return if err occurs
 	client, err := elastic.NewClient(elastic.SetURL(ES_URL), elastic.SetSniff(false))
 	if err != nil {
 		return nil, err
 	}
-
-	// prepare a geo-based query to find posts within a geological box
-	query := elastic.NewGeoDistanceQuery("location")
-	query = query.Distance(ran).Lat(lat).Lon(lon)
 
 	// get the result based on index and query, format the output
 	searchResult, err := client.Search().
