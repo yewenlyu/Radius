@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"reflect"
 	"strconv"
 
@@ -32,6 +33,8 @@ type Post struct {
 	Message  string   `json:"message"`
 	Location Location `json:"location"`
 	Url      string   `json:"url"`
+	Type     string   `json:"type"`
+	Face     float64  `json:"face"`
 }
 
 const (
@@ -42,6 +45,20 @@ const (
 	BUCKET_NAME          = "yewenlyu-project-radius"
 	PROJECT_ID           = "radius-252718"
 	BIGTABLE_INSTANCE_ID = "radius-post"
+)
+
+var (
+	mediaTypes = map[string]string{
+		".jpeg": "image",
+		".jpg":  "image",
+		".gif":  "image",
+		".png":  "image",
+		".mov":  "video",
+		".mp4":  "video",
+		".avi":  "video",
+		".flv":  "video",
+		".wmv":  "video",
+	}
 )
 
 func main() {
@@ -157,6 +174,25 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Url = attrs.MediaLink
+
+	file, header, _ := r.FormFile("image")
+	suffix := filepath.Ext(header.Filename)
+	if t, ok := mediaTypes[suffix]; ok {
+		p.Type = t
+	} else {
+		p.Type = "unknown"
+	}
+	if suffix == ".jpeg" {
+		if score, err := annotate(file); err != nil {
+			http.Error(w, "Failed to annotate the image", http.StatusInternalServerError)
+			fmt.Printf("Failed to annotate the image %v\n", err)
+			return
+		} else {
+			p.Face = score
+		}
+	} else {
+		p.Face = 0.0
+	}
 
 	err = saveToES(p, id)
 	if err != nil {
