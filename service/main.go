@@ -228,11 +228,10 @@ func handlerSearch(w http.ResponseWriter, r *http.Request) {
 	if val := r.URL.Query().Get("range"); val != "" {
 		ran = val + "km"
 	}
+	query := elastic.NewGeoDistanceQuery("location")
+	query = query.Distance(ran).Lat(lat).Lon(lon)
 
-	fmt.Println("range is ", ran)
-
-	// read data from ElasticSearch
-	posts, err := readFromES(lat, lon, ran)
+	posts, err := readFromES(query)
 	if err != nil {
 		http.Error(w, "Failed to read post from ElasticSearch", http.StatusInternalServerError)
 		fmt.Printf("Failed to read post from ElasticSearch %v.\n", err)
