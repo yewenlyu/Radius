@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/olivere/elastic"
 	"github.com/pborman/uuid"
 
@@ -43,9 +44,16 @@ const (
 func main() {
 	fmt.Println("started-service")
 	createIndexIfNotExist()
-	http.HandleFunc("/post", handlerPost)
-	http.HandleFunc("/search", handlerSearch)
+
+	r := mux.NewRouter()
+
+	r.Handle("/post", http.HandlerFunc(handlerPost)).Methods("POST", "OPTIONS")
+	r.Handle("/search", http.HandlerFunc(handlerSearch)).Methods("GET", "OPTIONS")
+
+	http.Handle("/", r)
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }
 
 // This function sets up an ElasticSearch client, prepares the mapping for the indices
@@ -90,6 +98,10 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
 
 	lat, _ := strconv.ParseFloat(r.FormValue("lat"), 64)
 	lon, _ := strconv.ParseFloat(r.FormValue("lon"), 64)
