@@ -31,11 +31,13 @@ type Post struct {
 }
 
 const (
-	POST_INDEX  = "post"
-	POST_TYPE   = "post"
-	DISTANCE    = "200km"
-	ES_URL      = "http://35.193.104.85:9200"
-	BUCKET_NAME = "yewenlyu-project-radius"
+	POST_INDEX           = "post"
+	POST_TYPE            = "post"
+	DISTANCE             = "200km"
+	ES_URL               = "http://35.193.104.85:9200"
+	BUCKET_NAME          = "yewenlyu-project-radius"
+	PROJECT_ID           = "radius-252718"
+	BIGTABLE_INSTANCE_ID = "radius-post"
 )
 
 func main() {
@@ -268,10 +270,9 @@ func saveToGCS(r io.Reader, bucketName, objectName string) (*storage.ObjectAttrs
 	return attrs, nil
 }
 
-// Save a post to BigTable
-func saveToBigTable(p *Post, id string) {
+func saveToBigTable(p *Post, id string) error {
 	ctx := context.Background()
-	bt_client, err := bigtable.NewClient(ctx, radius-252718, radius-post)
+	bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BIGTABLE_INSTANCE_ID)
 	if err != nil {
 		return err
 	}
