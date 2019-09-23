@@ -76,6 +76,7 @@ func main() {
 
 	r.Handle("/post", jwtMiddleware.Handler(http.HandlerFunc(handlerPost))).Methods("POST", "OPTIONS")
 	r.Handle("/search", jwtMiddleware.Handler(http.HandlerFunc(handlerSearch))).Methods("GET", "OPTIONS")
+	r.Handle("/cluster", jwtMiddleware.Handler(http.HandlerFunc(handlerCluster))).Methods("GET", "OPTIONS")
 	r.Handle("/signup", http.HandlerFunc(handlerSignup)).Methods("POST", "OPTIONS")
 	r.Handle("/login", http.HandlerFunc(handlerLogin)).Methods("POST", "OPTIONS")
 
@@ -307,6 +308,37 @@ func readFromES(query elastic.Query) ([]Post, error) {
 	}
 
 	return posts, nil
+}
+
+func handlerCluster(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Received one cluster request")
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	term := r.URL.Query().Get("term")
+	query := elastic.NewRangeQuery(term).Gte(0.9)
+
+	posts, err := readFromES(query)
+	if err != nil {
+		http.Error(w, "Failed to read post from ElasticSearch", http.StatusInternalServerError)
+		fmt.Printf("Failed to read post from ElasticSearch %v.\n", err)
+		return
+	}
+
+	js, err := json.Marshal(posts)
+	if err != nil {
+		http.Error(w, "Failed to parse post object", http.StatusInternalServerError)
+		fmt.Printf("Failed to parse post object %v\n", err)
+		return
+	}
+
+	w.Write(js)
 }
 
 func saveToGCS(r io.Reader, bucketName, objectName string) (*storage.ObjectAttrs, error) {
