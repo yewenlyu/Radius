@@ -15,6 +15,9 @@ import (
 	"github.com/olivere/elastic"
 	"github.com/pborman/uuid"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
+	jwt "github.com/dgrijalva/jwt-go"
+
 	"cloud.google.com/go/storage"
 )
 
@@ -84,6 +87,18 @@ func createIndexIfNotExist() {
             }
         }`
 		_, err = client.CreateIndex(POST_INDEX).Body(mapping).Do(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	exists, err = client.IndexExists(USER_INDEX).Do(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	if !exists {
+		_, err = client.CreateIndex(USER_INDEX).Do(context.Background())
 		if err != nil {
 			panic(err)
 		}
